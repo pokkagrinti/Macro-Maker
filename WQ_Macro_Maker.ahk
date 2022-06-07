@@ -1,4 +1,5 @@
-﻿#SingleInstance, force
+﻿#Include WindHumanMouse.ahk
+#SingleInstance, force
 #NoEnv
 SendMode Input
 SetWorkingDir %A_ScriptDir%
@@ -13,8 +14,6 @@ SetBatchLines -1
 ; 	Link: https://www.autohotkey.com/boards/viewtopic.php?style=7&p=444489				;
 ;---------------------------------------------------------------------------------------;
 ; Future Improvements:																	;
-; Display current window																;
-; Play script																			;
 ; Save/Load file																		;
 ;---------------------------------------------------------------------------------------;
 ;****************************************************************************************
@@ -22,14 +21,22 @@ SetBatchLines -1
 NameList := ""
 NameArr := StrSplit(NameList, "|")
 
+WinGet, window_, List 
+
+Loop, %window_%{
+	WinGetTitle, title, % "ahk_id" window_%A_Index%
+	winlist.= title ? title "|" : ""
+}
+
 Gui, Font, s8, Verdana
 Gui, +hwndGUIHwnd +AlwaysOnTop
-Gui, Add, Button,xm w80 gButton_Play, Play
+Gui, Add, Button,xm y+40 w80 gButton_Play, Play
 Gui, Add, Button,xm y+35 w80 gButton_Click_Box, Click Box
 Gui, Add, Button,xs y+4 w80 gButton_Sleep, Sleep
 Gui, Add, Button,xs y+4 w80 gButton_Delete, Delete
 Gui, Add, ListBox,ys w190 r10 vItemChoice, %NameList%
-Gui, Show, w300 h170, WQ Macro Maker
+Gui, Add, DropDownList,x10 y10 w280 h20 r7 vtitle gWinTitle choose1,%winlist%
+Gui, Show, w300 h200, WQ Macro Maker
 return
 
 
@@ -37,11 +44,11 @@ return
 ; Labels
 ; ===============================================================================
 Button_Click_Box:
-Toggle := True
-
+	Toggle := True
+	Gui, Submit, NoHide
+	WinActivate, %title%
 #if Toggle
 LButton::
-	KeyWait, LButton, D
 
     WinGetPos xtemp, ytemp, , , A
     MouseGetPos x1, y1
@@ -66,6 +73,7 @@ LButton::
 	Transform_Array_to_ListBox()
 	GuiControl,, ItemChoice, % NameList
 	
+	
 Return
 
 
@@ -76,9 +84,9 @@ Button_Sleep:
 	if !ErrorLevel{
 		temp_sleep_array := strsplit(sleep_duration, " ")
 		if (temp_sleep_array[2] == "")
-			action_to_add := "Sleep " temp_sleep_array[1] " " temp_sleep_array[1]
+			action_to_add := "sleep " temp_sleep_array[1] " " temp_sleep_array[1]
 		else
-			action_to_add := "Sleep " temp_sleep_array[1] " " temp_sleep_array[2]
+			action_to_add := "sleep " temp_sleep_array[1] " " temp_sleep_array[2]
 			
 		NameArr.Push(action_to_add)
 		Transform_Array_to_ListBox()
@@ -102,13 +110,33 @@ Button_Delete:
 		
 	GuiControl,, ItemChoice, % NameList
 	GuiControl, -AltSubmit, ItemChoice
+	
+ 	GuiControl, Choose, ItemChoice, % toDelete - 1
 return
 
 
 Button_Play:
 	Gui, 3: Destroy
+	Sleep 1000
+	Gui, Submit, NoHide
+	WinActivate, %title%
+	for index, value in NameArr{
+		GuiControl, Choose, ItemChoice, %index%
+		action_array := strsplit(value, " ")
+		
+		; Switch case based on action
+		switch action_array[1]{
+			case "clickbox":
+				click_box(action_array[2], action_array[3], action_array[4], action_array[5])
+			case "sleep":
+				Sleep, rand_range(action_array[2],action_array[3])
+		}
+	}
 return
 
+WinTitle:
+	Gui, Submit, NoHide
+return
 
 GuiClose:
 	ExitApp
@@ -124,8 +152,8 @@ GLOBAL
 		return
 	}
 	NameList := ""		;clean listbox
-	for Index, NameVal in NameArr	;search for each string in array
-		NameList .= "|" NameVal		;format array to listbox
+	for index, value in NameArr	;search for each string in array
+		NameList .= "|" value		;format array to listbox
 }
 
 
@@ -146,5 +174,30 @@ marker(X:=0, Y:=0, W:=0, H:=0, n:=2){
 ; ===============================================================================
 ; Hotkeys
 ; ===============================================================================
+#If
+~Shift & LButton::
+    WinGetPos xtemp, ytemp, , , A
+    MouseGetPos x1, y1
+    x1+=xtemp, y1+=ytemp
+	
+    While GetKeyState("LButton","P") {
+       MouseGetPos x2, y2
+       x2+=xtemp, y2+=ytemp
+       x:= (x1<x2)?(x1):(x2)    ;x-coordinate of the top left corner
+       y:= (y1<y2)?(y1):(y2)    ;y-coordinate of the top left corner
+       
+       w:= Abs(x2-x1), h:= Abs(y2-y1)
+       ;ToolTip % "Coords " x - xtemp "," y - ytemp "  Dim " w "x" h
+       
+       marker(x, y, w, h, 3)
+
+    }
+	
+	action_to_add := "clickbox " x - xtemp " " y - ytemp " " x+w-xtemp " " y+h-ytemp  
+	NameArr.Push(action_to_add)
+	Transform_Array_to_ListBox()
+	GuiControl,, ItemChoice, % NameList
+return 
+
 #If
 f9::reload
