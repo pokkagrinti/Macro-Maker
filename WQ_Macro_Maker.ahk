@@ -11,6 +11,8 @@ SetBatchLines -1
 ; 	Link: https://github.com/Arsenicus/AHK-Bot-Functions/blob/master/OSRS%20Tool.ahk	;
 ; ibieel - ListBox control code															;
 ; 	Link: https://www.autohotkey.com/boards/viewtopic.php?style=7&p=444489				;
+; tally - Stopwatch Code																;
+; 	Link: https://www.autohotkey.com/board/topic/31360-ahk-stopwatch/					;
 ;---------------------------------------------------------------------------------------;
 ; Future Improvements:																	;
 ; Save/Load file																		;
@@ -21,12 +23,14 @@ SetBatchLines -1
 ; 1.1	Added insertion of actions into specific position in the macro					;
 ;		Added refreshing of Window Titles with F5										;
 ;		Added Loop support																;
-;		Added Hotkey to Play Stop
+;		Added Hotkey to Play and Stop													;
+;																						;
+; 1.2	Added Time Elapsed and Iterations counter										;
 ;=======================================================================================;
 
 NameList := ""
 NameArr := StrSplit(NameList, "|")
-stop_toggle := True
+run_status := False
 
 WinGet, window_, List 
 
@@ -38,12 +42,14 @@ Loop, %window_%{
 Gui, Font, s8, Verdana
 Gui, +hwndGUIHwnd +AlwaysOnTop
 Gui, Add, Button,xm y+40 w80 vplay_button gButton_Play, Play [F1]
-Gui, Add, Edit,x11 y+4 w77 +Center 
+Gui, Add, Edit,x11 y+4 w77 vRepeat_Edit +Center 
 Gui, Add, UpDown, vRepeat Range0-999 Centre, 0
 Gui, Add, Button,xm y+35 w80 gButton_Click_Box, Click Box
 Gui, Add, Button,xs y+4 w80 gButton_Sleep, Sleep
 Gui, Add, Button,xs y+4 w80 gButton_Delete, Delete
 Gui, Add, ListBox,ys w190 r12 vItemChoice, %NameList%
+Gui, Add, Text, x10 y45 w80 h30 +Center vStop_Text hidden, Stop [F2]`nIteration: 1
+Gui, Add, Text, x10 y90 w80 h30 vTText +Center hidden, Time Elapsed`n00:00
 Gui, Add, DropDownList,x10 y10 w280 h20 r7 vddltitle hwndddl_id choose1,%winlist%
 Gui, Show, w300 h220, WQ Macro Maker
 return
@@ -61,7 +67,6 @@ Button_Click_Box:
 	WinActivate, %ddltitle%
 #if click_toggle
 LButton::
-
     WinGetPos xtemp, ytemp, , , A
     MouseGetPos x1, y1
     x1+=xtemp, y1+=ytemp
@@ -157,14 +162,24 @@ return
 
 
 Button_Play:
+	GuiControl, Hide, play_button
+	GuiControl, Hide, Repeat_Edit
+	GuiControl, Hide, Repeat
+	GuiControl, Show, Stop_Text
+	GuiControl, Show, TText
 	Gui, 3: Destroy
-	GuiControl ,, play_button, Stop [F2]
+			
+	timerm := "00"
+	timers := "00"
+	Settimer, Stopwatch, 1000
+	
 	Sleep 1000
 	Gui, Submit, NoHide
 	stop_toggle := false
 	while True{
-		WinActivate, %ddltitle%
+		GuiControl,, Stop_Text, Stop [F2]`nIteration: %A_Index%
 		for index, value in NameArr{
+			WinActivate, %ddltitle%
 			if (stop_toggle)
 				break
 			GuiControl, Choose, ItemChoice, %index%
@@ -182,9 +197,33 @@ Button_Play:
 		if (A_Index == Repeat or stop_toggle)
 			break
 	}
-	GuiControl ,, play_button, Start [F1]
+	GuiControl,, Stop_Text, Stop [F2]`nIteration: 1
+	GuiControl, Hide, Stop_Text
+	GuiControl, Show, play_button
+	GuiControl, Show, Repeat_Edit
+	GuiControl, Show, Repeat
+	
+	Settimer, Stopwatch, Off
 return
 
+
+Stopwatch:
+timers += 1
+if(timers > 59)
+{
+	timerm += 1
+	timers := "0"
+	GuiControl, , TText ,  Time Elapsed`n%timerm%:%timers%
+}
+if(timers < 10)
+{
+	GuiControl, , TText ,  Time Elapsed`n%timerm%:0%timers%
+}
+else
+{
+	GuiControl, , TText ,  Time Elapsed`n%timerm%:%timers%
+}
+return
 
 GuiClose:
 	ExitApp
@@ -217,6 +256,9 @@ marker(X:=0, Y:=0, W:=0, H:=0, n:=2){
 	WinSet, Transparent, 150
 	WinSet, Region, 0-0 %W%-0 %W%-%H% 0-%H% 0-0 %T%-%T% %w2%-%T% %w2%-%h2% %T%-%h2% %T%-%T%
 }
+
+
+
 
 
 ; ===============================================================================
