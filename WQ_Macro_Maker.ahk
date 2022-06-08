@@ -5,8 +5,7 @@ SendMode Input
 SetWorkingDir %A_ScriptDir%
 SetBatchLines -1
 
-;****************************************************************************************
-;---------------------------------------------------------------------------------------;
+;=======================================================================================;
 ; Credits:																				;
 ; Arsenicus - marker code from OSRS Tool       				      						;
 ; 	Link: https://github.com/Arsenicus/AHK-Bot-Functions/blob/master/OSRS%20Tool.ahk	;
@@ -16,10 +15,18 @@ SetBatchLines -1
 ; Future Improvements:																	;
 ; Save/Load file																		;
 ;---------------------------------------------------------------------------------------;
-;****************************************************************************************
+; Version Changes:																		;
+; 1.0	Basic Macro Maker. Play, Sleep, ClickBox, Delete actions						;
+; 																						;
+; 1.1	Added insertion of actions into specific position in the macro					;
+;		Added refreshing of Window Titles with F5										;
+;		Added Loop support																;
+;		Added Hotkey to Play Stop
+;=======================================================================================;
 
 NameList := ""
 NameArr := StrSplit(NameList, "|")
+stop_toggle := True
 
 WinGet, window_, List 
 
@@ -30,13 +37,15 @@ Loop, %window_%{
 
 Gui, Font, s8, Verdana
 Gui, +hwndGUIHwnd +AlwaysOnTop
-Gui, Add, Button,xm y+40 w80 gButton_Play, Play
+Gui, Add, Button,xm y+40 w80 vplay_button gButton_Play, Play [F1]
+Gui, Add, Edit,x11 y+4 w77 +Center 
+Gui, Add, UpDown, vRepeat Range0-999 Centre, 0
 Gui, Add, Button,xm y+35 w80 gButton_Click_Box, Click Box
 Gui, Add, Button,xs y+4 w80 gButton_Sleep, Sleep
 Gui, Add, Button,xs y+4 w80 gButton_Delete, Delete
-Gui, Add, ListBox,ys w190 r10 vItemChoice, %NameList%
-Gui, Add, DropDownList,x10 y10 w280 h20 r7 vtitle gWinTitle choose1,%winlist%
-Gui, Show, w300 h200, WQ Macro Maker
+Gui, Add, ListBox,ys w190 r12 vItemChoice, %NameList%
+Gui, Add, DropDownList,x10 y10 w280 h20 r7 vddltitle hwndddl_id choose1,%winlist%
+Gui, Show, w300 h220, WQ Macro Maker
 return
 
 
@@ -44,10 +53,13 @@ return
 ; Labels
 ; ===============================================================================
 Button_Click_Box:
-	Toggle := True
+	click_toggle := True
 	Gui, Submit, NoHide
-	WinActivate, %title%
-#if Toggle
+	GuiControl, +AltSubmit, ItemChoice
+	GuiControlGet, insertAt,, ItemChoice
+	
+	WinActivate, %ddltitle%
+#if click_toggle
 LButton::
 
     WinGetPos xtemp, ytemp, , , A
@@ -64,33 +76,59 @@ LButton::
        ;ToolTip % "Coords " x - xtemp "," y - ytemp "  Dim " w "x" h
        
        marker(x, y, w, h, 3)
-
-    }
-	Toggle := False
 	
-	action_to_add := "clickbox " x - xtemp " " y - ytemp " " x+w-xtemp " " y+h-ytemp  
-	NameArr.Push(action_to_add)
+    }
+	click_toggle := False
+	
+	action_to_add := "clickbox " x - xtemp " " y - ytemp " " x+w-xtemp " " y+h-ytemp
+	
+	; if nothing is selected or actions empty
+	if (insertAt == ""){
+		if (NameArr.MaxIndex() == "")
+			insertAt := 0
+		else 
+			insertAt := NameArr.MaxIndex()
+	}
+	
+	NameArr.insert(insertAt+1, action_to_add)
 	Transform_Array_to_ListBox()
 	GuiControl,, ItemChoice, % NameList
-	
+	GuiControl, Choose, ItemChoice, % insertAt + 1
+	GuiControl, -AltSubmit, ItemChoice
 	
 Return
 
 
 Button_Sleep:
+	Gui, Submit, NoHide
+	GuiControl, +AltSubmit, ItemChoice
+	GuiControlGet, insertAt,, ItemChoice
+	
 	WinGetPos current_window_x, current_window_y, , , A
 	Gui +OwnDialogs
 	Inputbox, sleep_duration, Add Sleep, Sleep: start end`nExample: 100 200, , 180, 150, current_window_x+75, current_window_y+20
 	if !ErrorLevel{
 		temp_sleep_array := strsplit(sleep_duration, " ")
-		if (temp_sleep_array[2] == "")
+		if (temp_sleep_array[1] == "")
+			return
+		else if(temp_sleep_array[2] == "")
 			action_to_add := "sleep " temp_sleep_array[1] " " temp_sleep_array[1]
 		else
 			action_to_add := "sleep " temp_sleep_array[1] " " temp_sleep_array[2]
-			
-		NameArr.Push(action_to_add)
+		
+		; if nothing is selected or actions empty
+		if (insertAt == ""){
+			if (NameArr.MaxIndex() == "")
+				insertAt := 0
+			else 
+				insertAt := NameArr.MaxIndex()
+		}
+		
+		NameArr.insert(insertAt+1, action_to_add)
 		Transform_Array_to_ListBox()
+		GuiControl, Choose, ItemChoice, % insertAt + 1
 		GuiControl,, ItemChoice, % NameList
+		GuiControl, -AltSubmit, ItemChoice
 	}
 return
 
@@ -111,32 +149,42 @@ Button_Delete:
 	GuiControl,, ItemChoice, % NameList
 	GuiControl, -AltSubmit, ItemChoice
 	
- 	GuiControl, Choose, ItemChoice, % toDelete - 1
+	if (toDelete > 1)
+		toDelete -= 1
+	
+ 	GuiControl, Choose, ItemChoice, % toDelete
 return
 
 
 Button_Play:
 	Gui, 3: Destroy
+	GuiControl ,, play_button, Stop [F2]
 	Sleep 1000
 	Gui, Submit, NoHide
-	WinActivate, %title%
-	for index, value in NameArr{
-		GuiControl, Choose, ItemChoice, %index%
-		action_array := strsplit(value, " ")
-		
-		; Switch case based on action
-		switch action_array[1]{
-			case "clickbox":
-				click_box(action_array[2], action_array[3], action_array[4], action_array[5])
-			case "sleep":
-				Sleep, rand_range(action_array[2],action_array[3])
+	stop_toggle := false
+	while True{
+		WinActivate, %ddltitle%
+		for index, value in NameArr{
+			if (stop_toggle)
+				break
+			GuiControl, Choose, ItemChoice, %index%
+			action_array := strsplit(value, " ")
+			
+			; Switch case based on action
+			switch action_array[1]{
+				case "clickbox":
+					click_box(action_array[2], action_array[3], action_array[4], action_array[5])
+				case "sleep":
+					Sleep, rand_range(action_array[2],action_array[3])
+			}
 		}
+		
+		if (A_Index == Repeat or stop_toggle)
+			break
 	}
+	GuiControl ,, play_button, Start [F1]
 return
 
-WinTitle:
-	Gui, Submit, NoHide
-return
 
 GuiClose:
 	ExitApp
@@ -201,3 +249,30 @@ return
 
 #If
 f9::reload
+
+#If
+	f1::goto, Button_Play
+return
+
+#If
+f2::stop_toggle := True
+return
+
+#If
+f5::
+	WinGet, window_, List 
+	winlist := ""
+	offset := 0
+	
+	Loop, %window_%{
+		WinGetTitle, title, % "ahk_id" window_%A_Index%
+		if (title == "WQ Macro Maker")
+			offset += 1
+		if (title == "WQ_Macro_Maker.ahk")
+			offset += 1
+		winlist .= title ? title "|" : ""
+	}
+
+	GuiControl,, ddltitle, |%winlist%
+	GuiControl, Choose, ddltitle, % offset + 1  
+return
