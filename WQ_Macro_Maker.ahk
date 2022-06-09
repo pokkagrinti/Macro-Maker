@@ -6,26 +6,27 @@ SetWorkingDir %A_ScriptDir%
 SetBatchLines -1
 
 ;=======================================================================================;
-; Credits:										;
-; Arsenicus - marker code from OSRS Tool       				      		;
-; 	Link: https://github.com/Arsenicus/AHK-Bot-Functions/blob/master/OSRS%20Tool.ahk;
-; ibieel - ListBox control code								;
-; 	Link: https://www.autohotkey.com/boards/viewtopic.php?style=7&p=444489		;
-; tally - Stopwatch Code								;
-; 	Link: https://www.autohotkey.com/board/topic/31360-ahk-stopwatch/		;
+; Credits:                                                                              ;
+; Arsenicus - marker code from OSRS Tool                                                ;
+; 	Link: https://github.com/Arsenicus/AHK-Bot-Functions/blob/master/OSRS%20Tool.ahk    ;
+; ibieel - ListBox control code                                                         ;
+; 	Link: https://www.autohotkey.com/boards/viewtopic.php?style=7&p=444489              ;
+; tally - Stopwatch Code                                                                ;
+; 	Link: https://www.autohotkey.com/board/topic/31360-ahk-stopwatch/                   ;
 ;---------------------------------------------------------------------------------------;
-; Future Improvements:									;
-; Save/Load file									;
+; Future Improvements:                                                                  ;
+; Save/Load file                                                                        ;
 ;---------------------------------------------------------------------------------------;
-; Version Changes:									;
-; 1.0	Basic Macro Maker. Play, Sleep, ClickBox, Delete actions			;
-; 											;
-; 1.1	Added insertion of actions into specific position in the macro			;
-;		Added refreshing of Window Titles with F5				;
-;		Added Loop support							;
-;		Added Hotkey to Play and Stop						;
-;											;
-; 1.2	Added Time Elapsed and Iterations counter					;
+; Version Changes:                                                                      ;
+; 1.0	Basic Macro Maker. Play, Sleep, ClickBox, Delete actions                        ;
+;                                                                                       ;
+; 1.1	Added insertion of actions into specific position in the macro                  ;
+;		Added refreshing of Window Titles with F5                                       ;
+;		Added Loop support                                                              ;
+;		Added Hotkey to Play and Stop                                                   ;
+;                                                                                       ;
+; 1.2	Added Time Elapsed and Iterations counter                                       ;
+; 1.3	Added Save/Load button and labelled gui as main for future child windows        ;
 ;=======================================================================================;
 
 NameList := ""
@@ -40,18 +41,25 @@ Loop, %window_%{
 }
 
 Gui, Font, s8, Verdana
-Gui, +hwndGUIHwnd +AlwaysOnTop
-Gui, Add, Button,xm y+40 w80 vplay_button gButton_Play, Play [F1]
-Gui, Add, Edit,x11 y+4 w77 vRepeat_Edit +Center 
-Gui, Add, UpDown, vRepeat Range0-999 Centre, 0
-Gui, Add, Button,xm y+35 w80 gButton_Click_Box, Click Box
-Gui, Add, Button,xs y+4 w80 gButton_Sleep, Sleep
-Gui, Add, Button,xs y+4 w80 gButton_Delete, Delete
-Gui, Add, ListBox,ys w190 r12 vItemChoice, %NameList%
-Gui, Add, Text, x10 y45 w80 h30 +Center vStop_Text hidden, Stop [F2]`nIteration: 1
-Gui, Add, Text, x10 y90 w80 h30 vTText +Center hidden, Time Elapsed`n00:00
-Gui, Add, DropDownList,x10 y10 w280 h20 r7 vddltitle hwndddl_id choose1,%winlist%
-Gui, Show, w300 h220, WQ Macro Maker
+Gui, main:New, +hwndGUIHwnd +AlwaysOnTop
+Gui, main:Add, Button,xm y+40 w80 vplay_button gButton_Play, Play [F1]
+Gui, main:Add, Edit,x11 y+4 w77 vRepeat_Edit +Center 
+Gui, main:Add, UpDown, vRepeat Range0-999 Centre, 0
+Gui, main:Add, Button,xm y+35 w80 gButton_Click_Box, Click Box
+Gui, main:Add, Button,xs y+4 w80 gButton_Sleep, Sleep
+Gui, main:Add, Button,xs y+4 w80 gButton_Delete, Delete
+Gui, main:Add, ListBox,ys w190 r12 vItemChoice, %NameList%
+
+Gui, main:Add, Button, w90 Section gButton_Save, Save
+Gui, main:Add, Button,xp+100 ys w90, Load
+
+Gui, main:Add, Text, x10 y45 w80 h30 +Center vStop_Text hidden, Stop [F2]`nIteration: 1
+Gui, main:Add, Text, x10 y90 w80 h30 vTText +Center hidden, Time Elapsed`n00:00
+Gui, main:Add, DropDownList,x10 y10 w280 h20 r7 vddltitle hwndddl_id choose1,%winlist%
+Gui, main:Show, w300 h240, WQ Macro Maker
+
+;Gui pixel:New, +Ownermain +AlwaysOnTop
+;Gui,pixel:Show,w200 h150
 return
 
 
@@ -60,9 +68,9 @@ return
 ; ===============================================================================
 Button_Click_Box:
 	click_toggle := True
-	Gui, Submit, NoHide
-	GuiControl, +AltSubmit, ItemChoice
-	GuiControlGet, insertAt,, ItemChoice
+	Gui, main:Submit, NoHide
+	GuiControl, main:+AltSubmit, ItemChoice
+	GuiControlGet, insertAt, main:, ItemChoice
 	
 	WinActivate, %ddltitle%
 #if click_toggle
@@ -97,17 +105,18 @@ LButton::
 	
 	NameArr.insert(insertAt+1, action_to_add)
 	Transform_Array_to_ListBox()
-	GuiControl,, ItemChoice, % NameList
-	GuiControl, Choose, ItemChoice, % insertAt + 1
-	GuiControl, -AltSubmit, ItemChoice
+	
+	GuiControl, main:, ItemChoice, % NameList
+	GuiControl, main:Choose, ItemChoice, % insertAt + 1
+	GuiControl, main:-AltSubmit, ItemChoice
 	
 Return
 
 
 Button_Sleep:
-	Gui, Submit, NoHide
-	GuiControl, +AltSubmit, ItemChoice
-	GuiControlGet, insertAt,, ItemChoice
+	Gui, main:Submit, NoHide
+	GuiControl, main:+AltSubmit, ItemChoice
+	GuiControlGet, insertAt, main:, ItemChoice
 	
 	WinGetPos current_window_x, current_window_y, , , A
 	Gui +OwnDialogs
@@ -131,17 +140,17 @@ Button_Sleep:
 		
 		NameArr.insert(insertAt+1, action_to_add)
 		Transform_Array_to_ListBox()
-		GuiControl, Choose, ItemChoice, % insertAt + 1
-		GuiControl,, ItemChoice, % NameList
-		GuiControl, -AltSubmit, ItemChoice
+		GuiControl, main:, ItemChoice, % NameList
+		GuiControl, main:Choose, ItemChoice, % insertAt + 1
+		GuiControl, main:-AltSubmit, ItemChoice
 	}
 return
 
 
 Button_Delete:
-	Gui, Submit, NoHide
-	GuiControl, +AltSubmit, ItemChoice
-	GuiControlGet, toDelete,, ItemChoice
+	Gui, main:Submit, NoHide
+	GuiControl, main:+AltSubmit, ItemChoice
+	GuiControlGet, toDelete, main:, ItemChoice
 	
 		
 	if (ItemChoice == ""){
@@ -151,22 +160,22 @@ Button_Delete:
 	NameArr.RemoveAt(toDelete)
 	Transform_Array_to_ListBox()
 		
-	GuiControl,, ItemChoice, % NameList
-	GuiControl, -AltSubmit, ItemChoice
+	GuiControl, main:, ItemChoice, % NameList
+	GuiControl, main:-AltSubmit, ItemChoice
 	
 	if (toDelete > 1)
 		toDelete -= 1
 	
- 	GuiControl, Choose, ItemChoice, % toDelete
+ 	GuiControl, main:Choose, ItemChoice, % toDelete
 return
 
 
 Button_Play:
-	GuiControl, Hide, play_button
-	GuiControl, Hide, Repeat_Edit
-	GuiControl, Hide, Repeat
-	GuiControl, Show, Stop_Text
-	GuiControl, Show, TText
+	GuiControl, main:Hide, play_button
+	GuiControl, main:Hide, Repeat_Edit
+	GuiControl, main:Hide, Repeat
+	GuiControl, main:Show, Stop_Text
+	GuiControl, main:Show, TText
 	Gui, 3: Destroy
 			
 	timerm := "00"
@@ -197,15 +206,40 @@ Button_Play:
 		if (A_Index == Repeat or stop_toggle)
 			break
 	}
-	GuiControl,, Stop_Text, Stop [F2]`nIteration: 1
-	GuiControl, Hide, Stop_Text
-	GuiControl, Show, play_button
-	GuiControl, Show, Repeat_Edit
-	GuiControl, Show, Repeat
+	GuiControl,main:, Stop_Text, Stop [F2]`nIteration: 1
+	GuiControl, main:Hide, Stop_Text
+	GuiControl, main:Show, play_button
+	GuiControl, main:Show, Repeat_Edit
+	GuiControl, main:Show, Repeat
 	
 	Settimer, Stopwatch, Off
 return
 
+
+Button_Save:
+	Gui, main: +Disabled -AlwaysOnTop
+	FileSelectFile, save_location, S26 +OwnDialogs, %A_ScriptDir%\Macro.wqm , Save as, WQ Macro (*.wqm)
+	if (save_location == ""){
+		Gui, main: -Disabled +AlwaysOnTop
+		return
+	}
+	
+	file_handle := FileOpen(save_location,"w")
+	if !IsObject(file_handle){
+		Gui, main: -Disabled +AlwaysOnTop
+		return
+	}
+	
+	Msgbox, % NameArr.MaxIndex()
+	
+	for index, value in NameArr{
+		file_handle.write(value)
+		file_handle.write("`n")
+	}
+	
+	file_handle.close()
+	Gui, main: -Disabled +AlwaysOnTop
+return
 
 Stopwatch:
 timers += 1
@@ -213,15 +247,15 @@ if(timers > 59)
 {
 	timerm += 1
 	timers := "0"
-	GuiControl, , TText ,  Time Elapsed`n%timerm%:%timers%
+	GuiControl, main:, TText ,  Time Elapsed`n%timerm%:%timers%
 }
 if(timers < 10)
 {
-	GuiControl, , TText ,  Time Elapsed`n%timerm%:0%timers%
+	GuiControl, main:, TText ,  Time Elapsed`n%timerm%:0%timers%
 }
 else
 {
-	GuiControl, , TText ,  Time Elapsed`n%timerm%:%timers%
+	GuiControl, main:, TText ,  Time Elapsed`n%timerm%:%timers%
 }
 return
 
@@ -258,17 +292,14 @@ marker(X:=0, Y:=0, W:=0, H:=0, n:=2){
 }
 
 
-
-
-
 ; ===============================================================================
 ; Hotkeys
 ; ===============================================================================
 #If
 ~Shift & LButton::
-	Gui, Submit, NoHide
-	GuiControl, +AltSubmit, ItemChoice
-	GuiControlGet, insertAt,, ItemChoice
+	Gui, main:Submit, NoHide
+	GuiControl, main:+AltSubmit, ItemChoice
+	GuiControlGet, insertAt, main:, ItemChoice
 	
     WinGetPos xtemp, ytemp, , , A
     MouseGetPos x1, y1
@@ -299,9 +330,9 @@ marker(X:=0, Y:=0, W:=0, H:=0, n:=2){
 	
 	NameArr.insert(insertAt+1, action_to_add)
 	Transform_Array_to_ListBox()
-	GuiControl,, ItemChoice, % NameList
-	GuiControl, Choose, ItemChoice, % insertAt + 1
-	GuiControl, -AltSubmit, ItemChoice
+	GuiControl, main:, ItemChoice, % NameList
+	GuiControl, main:Choose, ItemChoice, % insertAt + 1
+	GuiControl, main:-AltSubmit, ItemChoice
 	
 return 
 
@@ -309,7 +340,7 @@ return
 f9::reload
 
 #If
-	f1::goto, Button_Play
+f1::goto, Button_Play
 return
 
 #If
@@ -334,3 +365,4 @@ f5::
 	GuiControl,, ddltitle, |%winlist%
 	GuiControl, Choose, ddltitle, % offset + 1  
 return
+
