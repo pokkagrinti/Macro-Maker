@@ -266,6 +266,10 @@ marker(X:=0, Y:=0, W:=0, H:=0, n:=2){
 ; ===============================================================================
 #If
 ~Shift & LButton::
+	Gui, Submit, NoHide
+	GuiControl, +AltSubmit, ItemChoice
+	GuiControlGet, insertAt,, ItemChoice
+	
     WinGetPos xtemp, ytemp, , , A
     MouseGetPos x1, y1
     x1+=xtemp, y1+=ytemp
@@ -280,13 +284,25 @@ marker(X:=0, Y:=0, W:=0, H:=0, n:=2){
        ;ToolTip % "Coords " x - xtemp "," y - ytemp "  Dim " w "x" h
        
        marker(x, y, w, h, 3)
-
+	
     }
 	
-	action_to_add := "clickbox " x - xtemp " " y - ytemp " " x+w-xtemp " " y+h-ytemp  
-	NameArr.Push(action_to_add)
+	action_to_add := "clickbox " x - xtemp " " y - ytemp " " x+w-xtemp " " y+h-ytemp
+	
+	; if nothing is selected or actions empty
+	if (insertAt == ""){
+		if (NameArr.MaxIndex() == "")
+			insertAt := 0
+		else 
+			insertAt := NameArr.MaxIndex()
+	}
+	
+	NameArr.insert(insertAt+1, action_to_add)
 	Transform_Array_to_ListBox()
 	GuiControl,, ItemChoice, % NameList
+	GuiControl, Choose, ItemChoice, % insertAt + 1
+	GuiControl, -AltSubmit, ItemChoice
+	
 return 
 
 #If
