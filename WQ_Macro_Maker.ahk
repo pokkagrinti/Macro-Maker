@@ -8,11 +8,11 @@ SetBatchLines -1
 ;=======================================================================================;
 ; Credits:                                                                              ;
 ; Arsenicus - marker code from OSRS Tool                                                ;
-; 	Link: https://github.com/Arsenicus/AHK-Bot-Functions/blob/master/OSRS%20Tool.ahk    ;
+;     Link: https://github.com/Arsenicus/AHK-Bot-Functions/blob/master/OSRS%20Tool.ahk  ;
 ; ibieel - ListBox control code                                                         ;
-; 	Link: https://www.autohotkey.com/boards/viewtopic.php?style=7&p=444489              ;
+;     Link: https://www.autohotkey.com/boards/viewtopic.php?style=7&p=444489            ;
 ; tally - Stopwatch Code                                                                ;
-; 	Link: https://www.autohotkey.com/board/topic/31360-ahk-stopwatch/                   ;
+;     Link: https://www.autohotkey.com/board/topic/31360-ahk-stopwatch/                 ;
 ;---------------------------------------------------------------------------------------;
 ; Future Improvements:                                                                  ;
 ; Save/Load file                                                                        ;
@@ -21,9 +21,9 @@ SetBatchLines -1
 ; 1.0	Basic Macro Maker. Play, Sleep, ClickBox, Delete actions                        ;
 ;                                                                                       ;
 ; 1.1	Added insertion of actions into specific position in the macro                  ;
-;		Added refreshing of Window Titles with F5                                       ;
-;		Added Loop support                                                              ;
-;		Added Hotkey to Play and Stop                                                   ;
+;       Added refreshing of Window Titles with F5                                       ;
+;       Added Loop support                                                              ;
+;       Added Hotkey to Play and Stop                                                   ;
 ;                                                                                       ;
 ; 1.2	Added Time Elapsed and Iterations counter                                       ;
 ; 1.3	Added Save/Load button and labelled gui as main for future child windows        ;
