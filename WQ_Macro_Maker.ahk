@@ -15,7 +15,7 @@ SetBatchLines -1
 ;     Link: https://www.autohotkey.com/board/topic/31360-ahk-stopwatch/                 ;
 ;---------------------------------------------------------------------------------------;
 ; Future Improvements:                                                                  ;
-; Save/Load file                                                                        ;
+; Chance of running actions                                                             ;
 ;---------------------------------------------------------------------------------------;
 ; Version Changes:                                                                      ;
 ; 1.0	Basic Macro Maker. Play, Sleep, ClickBox, Delete actions                        ;
@@ -26,12 +26,15 @@ SetBatchLines -1
 ;       Added Hotkey to Play and Stop                                                   ;
 ;                                                                                       ;
 ; 1.2	Added Time Elapsed and Iterations counter                                       ;
+;                                                                                       ;
 ; 1.3	Added Save/Load button and labelled gui as main for future child windows        ;
+;       Added Save prompt                                                               ;
 ;=======================================================================================;
 
 NameList := ""
+loaded_file := ""
 NameArr := StrSplit(NameList, "|")
-run_status := False
+prompt_save := False
 
 WinGet, window_, List 
 
@@ -51,7 +54,7 @@ Gui, main:Add, Button,xs y+4 w80 gButton_Delete, Delete
 Gui, main:Add, ListBox,ys w190 r12 vItemChoice, %NameList%
 
 Gui, main:Add, Button, w90 Section gButton_Save, Save
-Gui, main:Add, Button,xp+100 ys w90, Load
+Gui, main:Add, Button,xp+100 ys w90 gButton_Load, Load
 
 Gui, main:Add, Text, x10 y45 w80 h30 +Center vStop_Text hidden, Stop [F2]`nIteration: 1
 Gui, main:Add, Text, x10 y90 w80 h30 vTText +Center hidden, Time Elapsed`n00:00
@@ -68,13 +71,9 @@ return
 ; ===============================================================================
 Button_Click_Box:
 	click_toggle := True
-	Gui, main:Submit, NoHide
-	GuiControl, main:+AltSubmit, ItemChoice
-	GuiControlGet, insertAt, main:, ItemChoice
-	
 	WinActivate, %ddltitle%
-#if click_toggle
-LButton::
+	#if click_toggle
+	LButton::
     WinGetPos xtemp, ytemp, , , A
     MouseGetPos x1, y1
     x1+=xtemp, y1+=ytemp
@@ -92,32 +91,13 @@ LButton::
 	
     }
 	click_toggle := False
-	
 	action_to_add := "clickbox " x - xtemp " " y - ytemp " " x+w-xtemp " " y+h-ytemp
 	
-	; if nothing is selected or actions empty
-	if (insertAt == ""){
-		if (NameArr.MaxIndex() == "")
-			insertAt := 0
-		else 
-			insertAt := NameArr.MaxIndex()
-	}
-	
-	NameArr.insert(insertAt+1, action_to_add)
-	Transform_Array_to_ListBox()
-	
-	GuiControl, main:, ItemChoice, % NameList
-	GuiControl, main:Choose, ItemChoice, % insertAt + 1
-	GuiControl, main:-AltSubmit, ItemChoice
-	
-Return
+	insert_to_NameArr(action_to_add)
+return
 
 
 Button_Sleep:
-	Gui, main:Submit, NoHide
-	GuiControl, main:+AltSubmit, ItemChoice
-	GuiControlGet, insertAt, main:, ItemChoice
-	
 	WinGetPos current_window_x, current_window_y, , , A
 	Gui +OwnDialogs
 	Inputbox, sleep_duration, Add Sleep, Sleep: start end`nExample: 100 200, , 180, 150, current_window_x+75, current_window_y+20
@@ -129,25 +109,15 @@ Button_Sleep:
 			action_to_add := "sleep " temp_sleep_array[1] " " temp_sleep_array[1]
 		else
 			action_to_add := "sleep " temp_sleep_array[1] " " temp_sleep_array[2]
-		
-		; if nothing is selected or actions empty
-		if (insertAt == ""){
-			if (NameArr.MaxIndex() == "")
-				insertAt := 0
-			else 
-				insertAt := NameArr.MaxIndex()
-		}
-		
-		NameArr.insert(insertAt+1, action_to_add)
-		Transform_Array_to_ListBox()
-		GuiControl, main:, ItemChoice, % NameList
-		GuiControl, main:Choose, ItemChoice, % insertAt + 1
-		GuiControl, main:-AltSubmit, ItemChoice
+			
+
+		insert_to_NameArr(action_to_add)
 	}
 return
 
 
 Button_Delete:
+	prompt_save := True
 	Gui, main:Submit, NoHide
 	GuiControl, main:+AltSubmit, ItemChoice
 	GuiControlGet, toDelete, main:, ItemChoice
@@ -158,7 +128,7 @@ Button_Delete:
 	}
 	
 	NameArr.RemoveAt(toDelete)
-	Transform_Array_to_ListBox()
+	transform_array_to_ListBox()
 		
 	GuiControl, main:, ItemChoice, % NameList
 	GuiControl, main:-AltSubmit, ItemChoice
@@ -217,8 +187,111 @@ return
 
 
 Button_Save:
+	prompt_save := False
+	save_file()
+return
+
+
+Button_Load:
+	Gui, main: +Disabled
+	if (prompt_save){
+		SetTimer, WinMoveMsgBox, -50
+		MsgBox, 4147, Save Macro, Do you want to save changes to the Macro?
+		IfMsgBox, No
+			prompt_save := False
+		else IfMsgBox Yes
+			prompt_save := False
+		else{
+			Gui, main: -Disabled
+			return
+		}
+	}
+	load_file()
+	Gui, main: -Disabled
+return
+
+WinMoveMsgBox:
+	WinGetPos, x, y,,, WQ Macro Maker
+	ID:=WinExist("Save Macro")
+	WinMove, ahk_id %ID%, , x-10, y+40
+Return
+
+Stopwatch:
+	timers += 1
+	if(timers > 59){
+		timerm += 1
+		timers := "0"
+		GuiControl, main:, TText ,  Time Elapsed`n%timerm%:%timers%
+	}
+	if(timers < 10){
+		GuiControl, main:, TText ,  Time Elapsed`n%timerm%:0%timers%
+	}
+	else{
+		GuiControl, main:, TText ,  Time Elapsed`n%timerm%:%timers%
+	}
+return
+
+mainGuiClose:
+	Gui, main: +Disabled
+	if (prompt_save){
+		SetTimer, WinMoveMsgBox, -50
+		MsgBox, 4147, Save Macro, Do you want to save changes to the Macro?
+		IfMsgBox, No
+			prompt_save := False
+		else IfMsgBox Yes
+			prompt_save := False
+		else{
+			Gui, main: -Disabled
+			return
+		}
+	}
+	ExitApp
+return
+
+; ===============================================================================
+; Functions
+; ===============================================================================
+transform_array_to_ListBox() {
+GLOBAL
+	if (NameArr.MaxIndex() == ""){
+		NameList := "|"
+		return
+	}
+	NameList := ""		;clean listbox
+	for index, value in NameArr	;search for each string in array
+		NameList .= "|" value		;format array to listbox
+}
+
+insert_to_NameArr(action_to_add){
+GLOBAL
+	prompt_save := True
+	Gui, main:Submit, NoHide
+	GuiControl, main:+AltSubmit, ItemChoice
+	GuiControlGet, insertAt, main:, ItemChoice
+	
+	; if nothing is selected or actions empty
+	if (insertAt == ""){
+		if (NameArr.MaxIndex() == "")
+			insertAt := 0
+		else 
+			insertAt := NameArr.MaxIndex()
+	}
+	NameArr.insert(insertAt+1, action_to_add)
+	transform_array_to_ListBox()
+	GuiControl, main:, ItemChoice, % NameList
+	GuiControl, main:Choose, ItemChoice, % insertAt + 1
+	GuiControl, main:-AltSubmit, ItemChoice
+}
+
+
+save_file(){
+GLOBAL
 	Gui, main: +Disabled -AlwaysOnTop
-	FileSelectFile, save_location, S26 +OwnDialogs, %A_ScriptDir%\Macro.wqm , Save as, WQ Macro (*.wqm)
+	
+	if (loaded_file == "")
+		FileSelectFile, save_location, S26 , %A_ScriptDir%\Macro.wqm , Save as, WQ Macro (*.wqm)
+	else
+		FileSelectFile, save_location, S26 , %A_ScriptDir%\%loaded_file% , Save as, WQ Macro (*.wqm)
 	if (save_location == ""){
 		Gui, main: -Disabled +AlwaysOnTop
 		return
@@ -230,51 +303,55 @@ Button_Save:
 		return
 	}
 	
-	Msgbox, % NameArr.MaxIndex()
-	
 	for index, value in NameArr{
 		file_handle.write(value)
 		file_handle.write("`n")
 	}
 	
 	file_handle.close()
+	
+	temp_array := StrSplit(save_location, "\")
+	filename := temp_array[temp_array.MaxIndex()]
+	
+	if (SubStr(filename, -3) != ".wqm"){
+		FileMove, %save_location%, %save_location%.wqm
+	}
+	
+	loaded_file := filename ".wqm"
+	
 	Gui, main: -Disabled +AlwaysOnTop
-return
-
-Stopwatch:
-timers += 1
-if(timers > 59)
-{
-	timerm += 1
-	timers := "0"
-	GuiControl, main:, TText ,  Time Elapsed`n%timerm%:%timers%
 }
-if(timers < 10)
-{
-	GuiControl, main:, TText ,  Time Elapsed`n%timerm%:0%timers%
-}
-else
-{
-	GuiControl, main:, TText ,  Time Elapsed`n%timerm%:%timers%
-}
-return
 
-GuiClose:
-	ExitApp
-return
-
-; ===============================================================================
-; Functions
-; ===============================================================================
-Transform_Array_to_ListBox() {
+load_file(){
 GLOBAL
-	if (NameArr.MaxIndex() == ""){
-		NameList := "|"
+	Gui, main: +Disabled -AlwaysOnTop
+	FileSelectFile, load_location, 3, %A_ScriptDir% , Load Macro, WQ Macro (*.wqm)
+	if (load_location == ""){
+		Gui, main: -Disabled +AlwaysOnTop
 		return
 	}
-	NameList := ""		;clean listbox
-	for index, value in NameArr	;search for each string in array
-		NameList .= "|" value		;format array to listbox
+	
+	FileRead, file_content, % load_location
+	if ErrorLevel{
+		Gui, main: -Disabled +AlwaysOnTop
+		Msgbox, Unable to read Macro file
+		return
+	}
+	
+	NameArr := []
+	Loop, parse, file_content, `n, `r 
+	{	
+		NameArr.push(A_LoopField)
+	}
+	
+	temp_array := StrSplit(load_location, "\")
+	filename := temp_array[temp_array.MaxIndex()]
+	loaded_file := filename
+	
+	transform_array_to_ListBox()
+	GuiControl, main:, ItemChoice, % NameList
+	GuiControl, main:Choose, ItemChoice, 1
+	GuiControl, main:-AltSubmit, ItemChoice
 }
 
 
@@ -297,9 +374,6 @@ marker(X:=0, Y:=0, W:=0, H:=0, n:=2){
 ; ===============================================================================
 #If
 ~Shift & LButton::
-	Gui, main:Submit, NoHide
-	GuiControl, main:+AltSubmit, ItemChoice
-	GuiControlGet, insertAt, main:, ItemChoice
 	
     WinGetPos xtemp, ytemp, , , A
     MouseGetPos x1, y1
@@ -320,20 +394,7 @@ marker(X:=0, Y:=0, W:=0, H:=0, n:=2){
 	
 	action_to_add := "clickbox " x - xtemp " " y - ytemp " " x+w-xtemp " " y+h-ytemp
 	
-	; if nothing is selected or actions empty
-	if (insertAt == ""){
-		if (NameArr.MaxIndex() == "")
-			insertAt := 0
-		else 
-			insertAt := NameArr.MaxIndex()
-	}
-	
-	NameArr.insert(insertAt+1, action_to_add)
-	Transform_Array_to_ListBox()
-	GuiControl, main:, ItemChoice, % NameList
-	GuiControl, main:Choose, ItemChoice, % insertAt + 1
-	GuiControl, main:-AltSubmit, ItemChoice
-	
+	insert_to_NameArr(action_to_add)
 return 
 
 #If
